@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>初代寶可夢圖鑑 (發聲版)</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin: 20px; }
+        .search-container { margin-bottom: 20px; }
+        #search-input { padding: 10px; font-size: 16px; width: 250px; border: 1px solid #ccc; border-radius: 5px; }
+        .search-btn, .reset-btn { padding: 10px 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 5px; }
+        .search-btn { background-color: #ffcb05; color: #333; }
+        .reset-btn { background-color: #ccc; color: #333; }
+        
+        .pokedex-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; cursor: pointer; }
+        .card:hover { transform: scale(1.05); }
+        .card img { width: 80px; height: 80px; }
+        .card h3 { font-size: 16px; margin: 5px 0; }
+        .card p.en-name { font-size: 12px; color: #777; margin: 0; text-transform: capitalize; }
+        
+        .type-badge { font-size: 12px; background-color: #eee; color: #333; padding: 3px 8px; border-radius: 10px; margin-top: 5px; font-weight: bold; display: inline-block; }
+        #load-more { margin-top: 30px; padding: 10px 20px; font-size: 16px; background-color: #3b4cca; color: white; border: none; border-radius: 20px; cursor: pointer; }
+        #load-more:disabled { background-color: #aaa; cursor: not-allowed; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 15px; width: 300px; text-align: center; position: relative; }
+        .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; color: #aaa; }
+        .close-btn:hover { color: red; }
+        .stats-text { text-align: left; margin-top: 15px; padding: 0 20px;}
+
+        @media (max-width: 1200px) { .pokedex-container { grid-template-columns: repeat(6, 1fr); } }
+        @media (max-width: 800px) { .pokedex-container { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 500px) { .pokedex-container { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+
+    <h1>初代寶可夢圖鑑 🔊</h1>
+
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="輸入英文名或編號 (例: 1, pikachu)">
+        <button class="search-btn" onclick="searchPokemon()">搜尋</button>
+        <button class="reset-btn" onclick="resetPokedex()">重設</button>
+    </div>
+    
+    <div id="pokedex" class="pokedex-container"></div>
+    <button id="load-more" onclick="loadNextBatch()">載入第一批...</button>
+
+    <div id="pokemon-modal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <img id="modal-img" src="" alt="Pokemon" style="width: 120px; height: 120px;">
+            <h2 id="modal-name" style="margin-bottom: 5px;">中文名</h2>
+            <p id="modal-en-name" style="margin-top: 0; color: #777; text-transform: capitalize;">English Name</p>
+            <div id="modal-types"></div>
+            
+            <div class="stats-text">
+                <hr>
+                <p>📏 <strong>身高:</strong> <span id="modal-height"></span> m</p>
+                <p>⚖️ <strong>體重:</strong> <span id="modal-weight"></span> kg</p>
+                <p>❤️ <strong>HP:</strong> <span id="modal-hp"></span></p>
+                <p>⚔️ <strong>攻擊:</strong> <span id="modal-attack"></span></p>
+                <p>🛡️ <strong>防禦:</strong> <span id="modal-defense"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentId = 1;
+        const maxId = 151;
+        const batchSize = 20;
+        let currentAudio = null; // 👇 新增：用來記錄目前正在播放的音效，避免聲音重疊
+
+        async function loadNextBatch() {
+            const btn = document.getElementById("load-more");
+            btn.disabled = true;
+            btn.textContent = "資料讀取中...";
+            const endId = Math.min(currentId + batchSize - 1, maxId);
+            for (let i = currentId; i <= endId; i++) {
+                await getPokemon(i);
+            }
+            currentId = endId + 1;
+            if (currentId > maxId) btn.style.display = "none";
+            else { btn.disabled = false; btn.textContent = "載入下一批 (20隻)"; }
+        }
+
+        async function fetchPokemonData(identifier) {
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${identifier}`);
+            if (!res.ok) throw new Error("找不到寶可夢");
+            const data = await res.json();
+            const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.id}`);
+            const speciesData = await speciesRes.json();
+            const zhNameObj = speciesData.names.find(n => n.language.name === 'zh-Hant');
+            data.chineseName = zhNameObj ? zhNameObj.name : data.name;
+            return data;
+        }
+
+        async function getPokemon(id) {
+            try {
+                const data = await fetchPokemonData(id);
+                createPokemonCard(data);
+            } catch (error) {
+                console.error(`第 ${id} 隻抓取失敗`);
+            }
+        }
+
+        async function searchPokemon() {
+            const inputValue = document.getElementById("search-input").value.toLowerCase().trim();
+            if (inputValue === "") return;
+            document.getElementById("pokedex").innerHTML = "";
+            document.getElementById("load-more").style.display = "none";
+            try {
+                const data = await fetchPokemonData(inputValue);
+                createPokemonCard(data);
+            } catch (error) {
+                document.getElementById("pokedex").innerHTML = `<h3 style="grid-column: 1 / -1; color: red;">找不到這隻寶可夢！(搜尋請用英文或編號)</h3>`;
+            }
+        }
+
+        function resetPokedex() {
+            currentId = 1; 
+            document.getElementById("search-input").value = ""; 
+            document.getElementById("pokedex").innerHTML = "";  
+            document.getElementById("load-more").style.display = "inline-block"; 
+            loadNextBatch(); 
+        }
+
+        function createPokemonCard(data) {
+            const types = data.types.map(item => `<span class="type-badge">${item.type.name.toUpperCase()}</span>`).join(' ');
+            const card = document.createElement('div');
+            card.classList.add('card'); 
+            
+            // 點擊卡片時觸發 openModal 函數
+            card.onclick = () => openModal(data);
+
+            const imgSrc = data.sprites.front_default ? data.sprites.front_default : "https://via.placeholder.com/80?text=No+Image";
+            
+            card.innerHTML = `
+                <img src="${imgSrc}" alt="${data.name}">
+                <h3>#${data.id} ${data.chineseName}</h3>
+                <p class="en-name">${data.name}</p>
+                <div>${types}</div>
+            `;
+            document.getElementById("pokedex").appendChild(card);
+        }
+
+        function openModal(data) {
+            // 👇 新增：播放叫聲的魔法 👇
+            // 1. 如果有聲音正在播，先把它停掉，才不會連續點擊變成交響樂
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            
+            // 2. 檢查 API 是否有提供這隻寶可夢的叫聲網址
+            if (data.cries && data.cries.latest) {
+                currentAudio = new Audio(data.cries.latest);
+                currentAudio.volume = 0.3; // 把音量調小到 30%，避免嚇到使用者
+                
+                // 開始播放 (.catch 是用來防止瀏覽器嚴格限制自動播放時報錯當機)
+                currentAudio.play().catch(err => console.log("音效無法播放:", err));
+            }
+            // 👆 新增結束 👆
+
+            document.getElementById("modal-img").src = data.sprites.front_default;
+            document.getElementById("modal-name").textContent = `#${data.id} ${data.chineseName}`;
+            document.getElementById("modal-en-name").textContent = data.name;
+            
+            document.getElementById("modal-types").innerHTML = data.types.map(item => 
+                `<span class="type-badge">${item.type.name.toUpperCase()}</span>`
+            ).join(' ');
+
+            document.getElementById("modal-height").textContent = (data.height / 10).toFixed(1);
+            document.getElementById("modal-weight").textContent = (data.weight / 10).toFixed(1);
+
+            const hp = data.stats.find(s => s.stat.name === 'hp').base_stat;
+            const attack = data.stats.find(s => s.stat.name === 'attack').base_stat;
+            const defense = data.stats.find(s => s.stat.name === 'defense').base_stat;
+
+            document.getElementById("modal-hp").textContent = hp;
+            document.getElementById("modal-attack").textContent = attack;
+            document.getElementById("modal-defense").textContent = defense;
+
+            document.getElementById("pokemon-modal").style.display = "flex";
+        }
+
+        function closeModal() {
+            document.getElementById("pokemon-modal").style.display = "none";
+            
+            // 👇 新增：關閉視窗時順便停止聲音 👇
+            if (currentAudio) {
+                currentAudio.pause();
+            }
+        }
+
+        loadNextBatch();
+    </script>
+
+</body>
+</html>
