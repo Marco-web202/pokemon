@@ -14,7 +14,7 @@
         .search-btn { background-color: #ffcb05; color: #333; }
         .reset-btn { background-color: #ccc; color: #333; }
         
-        /* 👇 新增：世代選擇器 (9顆精靈球) 的樣式 👇 */
+        /* 世代選擇器 (9顆精靈球) 的樣式 */
         .gen-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         .gen-btn { display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.4; transition: all 0.2s; }
         .gen-btn:hover { opacity: 0.8; transform: scale(1.1); }
@@ -58,7 +58,6 @@
         <button class="reset-btn" onclick="resetPokedex()">重設</button>
     </div>
     
-    <!-- 👇 新增：準備放置 9 顆精靈球的區域 👇 -->
     <div id="gen-selector" class="gen-selector"></div>
     
     <div id="loading-message">圖鑑準備中...</div>
@@ -84,7 +83,6 @@
     </div>
 
     <script>
-        // 👇 新增：定義 1 到 9 世代的圖鑑編號範圍 👇
         const generations = [
             { gen: 1, start: 1, end: 151 },
             { gen: 2, start: 152, end: 251 },
@@ -98,11 +96,10 @@
         ];
 
         let currentGen = 1;
-        let currentLoadId = 0; // 用來防止快速點擊多個世代時造成的畫面混亂
+        let currentLoadId = 0; 
         let currentAudio = null; 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // 👇 新增：動態產生 9 顆精靈球按鈕 👇
         function renderGenButtons() {
             const container = document.getElementById("gen-selector");
             generations.forEach(g => {
@@ -111,7 +108,6 @@
                 btn.id = `gen-${g.gen}`;
                 btn.onclick = () => loadGeneration(g.gen);
                 
-                // 使用官方的精靈球小圖示
                 btn.innerHTML = `
                     <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="第 ${g.gen} 世代">
                     <span>${g.gen}</span>
@@ -120,16 +116,14 @@
             });
         }
 
-        // 👇 修改：根據選擇的世代來載入對應的寶可夢 👇
         async function loadGeneration(genNumber) {
             currentGen = genNumber;
-            currentLoadId++; // 每次載入新世代，產生一個新的任務ID
+            currentLoadId++; 
             const myLoadId = currentLoadId; 
 
             const genData = generations.find(g => g.gen === genNumber);
             const total = genData.end - genData.start + 1;
 
-            // 更新精靈球的 UI 樣式 (把選中的變亮)
             document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`gen-${genNumber}`).classList.add('active');
 
@@ -137,9 +131,8 @@
             document.getElementById("loading-message").textContent = `正在召喚第 ${genNumber} 世代的 ${total} 隻寶可夢，請稍候...`;
             document.getElementById("pokedex").innerHTML = "";
 
-            // 從該世代的起點抓到終點
             for (let i = genData.start; i <= genData.end; i++) {
-                if (myLoadId !== currentLoadId) return; // 如果載入到一半，使用者點了其他世代，就立刻中斷
+                if (myLoadId !== currentLoadId) return; 
                 await getPokemon(i);
                 await sleep(100); 
             }
@@ -177,8 +170,8 @@
             const inputValue = document.getElementById("search-input").value.toLowerCase().trim();
             if (inputValue === "") return;
             
-            currentLoadId++; // 停止背景正在載入的世代
-            document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active')); // 取消所有精靈球的亮起狀態
+            currentLoadId++; 
+            document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active')); 
 
             document.getElementById("pokedex").innerHTML = "";
             document.getElementById("loading-message").style.display = "block"; 
@@ -195,7 +188,7 @@
 
         function resetPokedex() {
             document.getElementById("search-input").value = ""; 
-            loadGeneration(currentGen); // 重設時，重新載入目前亮起的那顆精靈球世代
+            loadGeneration(currentGen); 
         }
 
         function createPokemonCard(data) {
@@ -207,9 +200,11 @@
 
             const imgSrc = data.sprites.front_default ? data.sprites.front_default : "https://via.placeholder.com/80?text=No+Image";
             
-            // 點擊圖片開啟維基百科新分頁 (與上一版相同)
+            // 👇 修改：使用寶可夢的 3 位數編號 (paddedId) 作為維基百科的連結
+            const paddedId = String(data.id).padStart(3, '0');
+            
             card.innerHTML = `
-                <a href="https://wiki.52poke.com/wiki/${data.chineseName}" target="_blank" onclick="event.stopPropagation()" title="前往 ${data.chineseName} 神奇寶貝百科">
+                <a href="https://wiki.52poke.com/wiki/${paddedId}" target="_blank" onclick="event.stopPropagation()" title="前往 #${paddedId} 神奇寶貝百科">
                     <img src="${imgSrc}" alt="${data.name}">
                 </a>
                 <h3>#${data.id} ${data.chineseName}</h3>
@@ -260,7 +255,6 @@
             }
         }
 
-        // 網頁一打開，先產生 9 顆精靈球，然後自動載入第 1 世代
         renderGenButtons();
         loadGeneration(1);
     </script>
