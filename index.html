@@ -3,32 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>初代寶可夢圖鑑 (發聲版)</title>
+    <title>全世代寶可夢圖鑑</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin: 20px; }
+        
+        /* 搜尋區塊 */
         .search-container { margin-bottom: 20px; }
         #search-input { padding: 10px; font-size: 16px; width: 250px; border: 1px solid #ccc; border-radius: 5px; }
         .search-btn, .reset-btn { padding: 10px 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 5px; }
         .search-btn { background-color: #ffcb05; color: #333; }
         .reset-btn { background-color: #ccc; color: #333; }
         
+        /* 👇 新增：世代選擇器 (9顆精靈球) 的樣式 👇 */
+        .gen-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .gen-btn { display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.4; transition: all 0.2s; }
+        .gen-btn:hover { opacity: 0.8; transform: scale(1.1); }
+        .gen-btn.active { opacity: 1; transform: scale(1.2); }
+        .gen-btn img { width: 45px; height: 45px; }
+        .gen-btn span { font-weight: bold; font-size: 14px; margin-top: 5px; color: #555; }
+        
+        /* 網格與卡片 */
         .pokedex-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; cursor: pointer; }
         .card:hover { transform: scale(1.05); }
-        .card img { width: 80px; height: 80px; }
+        .card a { text-decoration: none; } 
+        .card img { width: 80px; height: 80px; transition: transform 0.2s; }
+        .card img:hover { transform: scale(1.15); } 
         .card h3 { font-size: 16px; margin: 5px 0; }
         .card p.en-name { font-size: 12px; color: #777; margin: 0; text-transform: capitalize; }
-        
         .type-badge { font-size: 12px; background-color: #eee; color: #333; padding: 3px 8px; border-radius: 10px; margin-top: 5px; font-weight: bold; display: inline-block; }
-        #load-more { margin-top: 30px; padding: 10px 20px; font-size: 16px; background-color: #3b4cca; color: white; border: none; border-radius: 20px; cursor: pointer; }
-        #load-more:disabled { background-color: #aaa; cursor: not-allowed; }
+        
+        #loading-message { font-size: 18px; color: #555; margin: 20px 0; font-weight: bold; }
 
+        /* 彈出視窗 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 15px; width: 300px; text-align: center; position: relative; }
         .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; color: #aaa; }
         .close-btn:hover { color: red; }
         .stats-text { text-align: left; margin-top: 15px; padding: 0 20px;}
 
+        /* RWD 手機版 */
         @media (max-width: 1200px) { .pokedex-container { grid-template-columns: repeat(6, 1fr); } }
         @media (max-width: 800px) { .pokedex-container { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 500px) { .pokedex-container { grid-template-columns: repeat(2, 1fr); } }
@@ -36,7 +50,7 @@
 </head>
 <body>
 
-    <h1>初代寶可夢圖鑑 🔊</h1>
+    <h1>全世代寶可夢圖鑑 🔊</h1>
 
     <div class="search-container">
         <input type="text" id="search-input" placeholder="輸入英文名或編號 (例: 1, pikachu)">
@@ -44,8 +58,11 @@
         <button class="reset-btn" onclick="resetPokedex()">重設</button>
     </div>
     
+    <!-- 👇 新增：準備放置 9 顆精靈球的區域 👇 -->
+    <div id="gen-selector" class="gen-selector"></div>
+    
+    <div id="loading-message">圖鑑準備中...</div>
     <div id="pokedex" class="pokedex-container"></div>
-    <button id="load-more" onclick="loadNextBatch()">載入第一批...</button>
 
     <div id="pokemon-modal" class="modal-overlay" onclick="closeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -67,32 +84,83 @@
     </div>
 
     <script>
-        let currentId = 1;
-        const maxId = 151;
-        const batchSize = 20;
-        let currentAudio = null; // 👇 新增：用來記錄目前正在播放的音效，避免聲音重疊
+        // 👇 新增：定義 1 到 9 世代的圖鑑編號範圍 👇
+        const generations = [
+            { gen: 1, start: 1, end: 151 },
+            { gen: 2, start: 152, end: 251 },
+            { gen: 3, start: 252, end: 386 },
+            { gen: 4, start: 387, end: 493 },
+            { gen: 5, start: 494, end: 649 },
+            { gen: 6, start: 650, end: 721 },
+            { gen: 7, start: 722, end: 809 },
+            { gen: 8, start: 810, end: 905 },
+            { gen: 9, start: 906, end: 1025 }
+        ];
 
-        async function loadNextBatch() {
-            const btn = document.getElementById("load-more");
-            btn.disabled = true;
-            btn.textContent = "資料讀取中...";
-            const endId = Math.min(currentId + batchSize - 1, maxId);
-            for (let i = currentId; i <= endId; i++) {
+        let currentGen = 1;
+        let currentLoadId = 0; // 用來防止快速點擊多個世代時造成的畫面混亂
+        let currentAudio = null; 
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // 👇 新增：動態產生 9 顆精靈球按鈕 👇
+        function renderGenButtons() {
+            const container = document.getElementById("gen-selector");
+            generations.forEach(g => {
+                const btn = document.createElement("div");
+                btn.className = `gen-btn`;
+                btn.id = `gen-${g.gen}`;
+                btn.onclick = () => loadGeneration(g.gen);
+                
+                // 使用官方的精靈球小圖示
+                btn.innerHTML = `
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="第 ${g.gen} 世代">
+                    <span>${g.gen}</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        // 👇 修改：根據選擇的世代來載入對應的寶可夢 👇
+        async function loadGeneration(genNumber) {
+            currentGen = genNumber;
+            currentLoadId++; // 每次載入新世代，產生一個新的任務ID
+            const myLoadId = currentLoadId; 
+
+            const genData = generations.find(g => g.gen === genNumber);
+            const total = genData.end - genData.start + 1;
+
+            // 更新精靈球的 UI 樣式 (把選中的變亮)
+            document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`gen-${genNumber}`).classList.add('active');
+
+            document.getElementById("loading-message").style.display = "block";
+            document.getElementById("loading-message").textContent = `正在召喚第 ${genNumber} 世代的 ${total} 隻寶可夢，請稍候...`;
+            document.getElementById("pokedex").innerHTML = "";
+
+            // 從該世代的起點抓到終點
+            for (let i = genData.start; i <= genData.end; i++) {
+                if (myLoadId !== currentLoadId) return; // 如果載入到一半，使用者點了其他世代，就立刻中斷
                 await getPokemon(i);
+                await sleep(100); 
             }
-            currentId = endId + 1;
-            if (currentId > maxId) btn.style.display = "none";
-            else { btn.disabled = false; btn.textContent = "載入下一批 (20隻)"; }
+            
+            if (myLoadId === currentLoadId) {
+                document.getElementById("loading-message").style.display = "none";
+            }
         }
 
         async function fetchPokemonData(identifier) {
             const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${identifier}`);
             if (!res.ok) throw new Error("找不到寶可夢");
             const data = await res.json();
-            const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.id}`);
-            const speciesData = await speciesRes.json();
-            const zhNameObj = speciesData.names.find(n => n.language.name === 'zh-Hant');
-            data.chineseName = zhNameObj ? zhNameObj.name : data.name;
+            try {
+                const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.id}`);
+                const speciesData = await speciesRes.json();
+                const zhNameObj = speciesData.names.find(n => n.language.name === 'zh-Hant') || speciesData.names.find(n => n.language.name === 'zh-Hans');
+                data.chineseName = zhNameObj ? zhNameObj.name : data.name;
+            } catch (e) {
+                 data.chineseName = data.name;
+            }
             return data;
         }
 
@@ -108,22 +176,26 @@
         async function searchPokemon() {
             const inputValue = document.getElementById("search-input").value.toLowerCase().trim();
             if (inputValue === "") return;
+            
+            currentLoadId++; // 停止背景正在載入的世代
+            document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active')); // 取消所有精靈球的亮起狀態
+
             document.getElementById("pokedex").innerHTML = "";
-            document.getElementById("load-more").style.display = "none";
+            document.getElementById("loading-message").style.display = "block"; 
+            document.getElementById("loading-message").textContent = "搜尋中...";
             try {
                 const data = await fetchPokemonData(inputValue);
+                document.getElementById("loading-message").style.display = "none";
                 createPokemonCard(data);
             } catch (error) {
+                document.getElementById("loading-message").style.display = "none";
                 document.getElementById("pokedex").innerHTML = `<h3 style="grid-column: 1 / -1; color: red;">找不到這隻寶可夢！(搜尋請用英文或編號)</h3>`;
             }
         }
 
         function resetPokedex() {
-            currentId = 1; 
             document.getElementById("search-input").value = ""; 
-            document.getElementById("pokedex").innerHTML = "";  
-            document.getElementById("load-more").style.display = "inline-block"; 
-            loadNextBatch(); 
+            loadGeneration(currentGen); // 重設時，重新載入目前亮起的那顆精靈球世代
         }
 
         function createPokemonCard(data) {
@@ -131,13 +203,15 @@
             const card = document.createElement('div');
             card.classList.add('card'); 
             
-            // 點擊卡片時觸發 openModal 函數
             card.onclick = () => openModal(data);
 
             const imgSrc = data.sprites.front_default ? data.sprites.front_default : "https://via.placeholder.com/80?text=No+Image";
             
+            // 點擊圖片開啟維基百科新分頁 (與上一版相同)
             card.innerHTML = `
-                <img src="${imgSrc}" alt="${data.name}">
+                <a href="https://wiki.52poke.com/wiki/${data.chineseName}" target="_blank" onclick="event.stopPropagation()" title="前往 ${data.chineseName} 神奇寶貝百科">
+                    <img src="${imgSrc}" alt="${data.name}">
+                </a>
                 <h3>#${data.id} ${data.chineseName}</h3>
                 <p class="en-name">${data.name}</p>
                 <div>${types}</div>
@@ -146,22 +220,16 @@
         }
 
         function openModal(data) {
-            // 👇 新增：播放叫聲的魔法 👇
-            // 1. 如果有聲音正在播，先把它停掉，才不會連續點擊變成交響樂
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio.currentTime = 0;
             }
             
-            // 2. 檢查 API 是否有提供這隻寶可夢的叫聲網址
             if (data.cries && data.cries.latest) {
                 currentAudio = new Audio(data.cries.latest);
-                currentAudio.volume = 0.3; // 把音量調小到 30%，避免嚇到使用者
-                
-                // 開始播放 (.catch 是用來防止瀏覽器嚴格限制自動播放時報錯當機)
+                currentAudio.volume = 0.3; 
                 currentAudio.play().catch(err => console.log("音效無法播放:", err));
             }
-            // 👆 新增結束 👆
 
             document.getElementById("modal-img").src = data.sprites.front_default;
             document.getElementById("modal-name").textContent = `#${data.id} ${data.chineseName}`;
@@ -187,14 +255,14 @@
 
         function closeModal() {
             document.getElementById("pokemon-modal").style.display = "none";
-            
-            // 👇 新增：關閉視窗時順便停止聲音 👇
             if (currentAudio) {
                 currentAudio.pause();
             }
         }
 
-        loadNextBatch();
+        // 網頁一打開，先產生 9 顆精靈球，然後自動載入第 1 世代
+        renderGenButtons();
+        loadGeneration(1);
     </script>
 
 </body>
