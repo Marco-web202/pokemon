@@ -7,14 +7,12 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin: 20px; }
         
-        /* 搜尋區塊 */
         .search-container { margin-bottom: 20px; }
         #search-input { padding: 10px; font-size: 16px; width: 250px; border: 1px solid #ccc; border-radius: 5px; }
         .search-btn, .reset-btn { padding: 10px 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 5px; }
         .search-btn { background-color: #ffcb05; color: #333; }
         .reset-btn { background-color: #ccc; color: #333; }
         
-        /* 世代選擇器 (9顆精靈球) 的樣式 */
         .gen-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         .gen-btn { display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.4; transition: all 0.2s; }
         .gen-btn:hover { opacity: 0.8; transform: scale(1.1); }
@@ -22,7 +20,6 @@
         .gen-btn img { width: 45px; height: 45px; }
         .gen-btn span { font-weight: bold; font-size: 14px; margin-top: 5px; color: #555; }
         
-        /* 網格與卡片 */
         .pokedex-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; cursor: pointer; }
         .card:hover { transform: scale(1.05); }
@@ -35,14 +32,12 @@
         
         #loading-message { font-size: 18px; color: #555; margin: 20px 0; font-weight: bold; }
 
-        /* 彈出視窗 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 15px; width: 300px; text-align: center; position: relative; }
         .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; color: #aaa; }
         .close-btn:hover { color: red; }
         .stats-text { text-align: left; margin-top: 15px; padding: 0 20px;}
 
-        /* RWD 手機版 */
         @media (max-width: 1200px) { .pokedex-container { grid-template-columns: repeat(6, 1fr); } }
         @media (max-width: 800px) { .pokedex-container { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 500px) { .pokedex-container { grid-template-columns: repeat(2, 1fr); } }
@@ -65,7 +60,7 @@
 
     <div id="pokemon-modal" class="modal-overlay" onclick="closeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <span class="close-btn" onclick="closeModal()">×</span>
             <img id="modal-img" src="" alt="Pokemon" style="width: 120px; height: 120px;">
             <h2 id="modal-name" style="margin-bottom: 5px;">中文名</h2>
             <p id="modal-en-name" style="margin-top: 0; color: #777; text-transform: capitalize;">English Name</p>
@@ -83,6 +78,17 @@
     </div>
 
     <script>
+        const customWikiNames = {
+            1: "妙蛙種子",
+            2: "妙蛙草",
+            908: "魔幻假面喵",
+            925: "一家鼠",
+            1002: "古劍豹",
+            1020: "破空焰",
+	    1022: "铁磐岩",
+                        1023: "铁头壳",
+        };
+
         const generations = [
             { gen: 1, start: 1, end: 151 },
             { gen: 2, start: 152, end: 251 },
@@ -146,13 +152,32 @@
             const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${identifier}`);
             if (!res.ok) throw new Error("找不到寶可夢");
             const data = await res.json();
-            try {
-                const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.id}`);
-                const speciesData = await speciesRes.json();
-                const zhNameObj = speciesData.names.find(n => n.language.name === 'zh-Hant') || speciesData.names.find(n => n.language.name === 'zh-Hans');
-                data.chineseName = zhNameObj ? zhNameObj.name : data.name;
-            } catch (e) {
-                 data.chineseName = data.name;
+            
+            if (customWikiNames[data.id]) {
+                data.chineseName = customWikiNames[data.id];
+            } else {
+                let success = false;
+                let attempts = 3; 
+                
+                while (attempts > 0 && !success) {
+                    try {
+                        const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.id}`);
+                        if (!speciesRes.ok) throw new Error("Rate limited");
+                        
+                        const speciesData = await speciesRes.json();
+                        const zhNameObj = speciesData.names.find(n => n.language.name === 'zh-Hant') || speciesData.names.find(n => n.language.name === 'zh-Hans');
+                        
+                        data.chineseName = zhNameObj ? zhNameObj.name : data.name;
+                        success = true; 
+                    } catch (e) {
+                        attempts--;
+                        if (attempts > 0) {
+                            await sleep(300); 
+                        } else {
+                            data.chineseName = data.name; 
+                        }
+                    }
+                }
             }
             return data;
         }
@@ -200,11 +225,8 @@
 
             const imgSrc = data.sprites.front_default ? data.sprites.front_default : "https://via.placeholder.com/80?text=No+Image";
             
-            // 👇 修改：使用寶可夢的 3 位數編號 (paddedId) 作為維基百科的連結
-            const paddedId = String(data.id).padStart(3, '0');
-            
             card.innerHTML = `
-                <a href="https://wiki.52poke.com/wiki/${paddedId}" target="_blank" onclick="event.stopPropagation()" title="前往 #${paddedId} 神奇寶貝百科">
+                <a href="https://wiki.52poke.com/wiki/${data.chineseName}" target="_blank" onclick="event.stopPropagation()" title="前往 ${data.chineseName} 神奇寶貝百科">
                     <img src="${imgSrc}" alt="${data.name}">
                 </a>
                 <h3>#${data.id} ${data.chineseName}</h3>
