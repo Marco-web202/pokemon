@@ -12,7 +12,14 @@
         .search-btn, .reset-btn { padding: 10px 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 5px; }
         .search-btn { background-color: #ffcb05; color: #333; }
         .reset-btn { background-color: #ccc; color: #333; }
+
+        /* 三大專屬寵物按鈕 (無框架、無文字，純圖形輪廓特效) */
+        .special-links-container { display: flex; justify-content: center; gap: 40px; margin-bottom: 25px; flex-wrap: wrap; }
+        .special-link { cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .special-link:hover { transform: translateY(-8px) scale(1.25); filter: drop-shadow(0 10px 12px rgba(0,0,0,0.3)); }
+        .special-link img { width: 90px; height: 90px; display: block; }
         
+        /* 世代選擇器 (9顆精靈球) 的樣式 */
         .gen-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         .gen-btn { display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.4; transition: all 0.2s; }
         .gen-btn:hover { opacity: 0.8; transform: scale(1.1); }
@@ -32,6 +39,7 @@
         
         #loading-message { font-size: 18px; color: #555; margin: 20px 0; font-weight: bold; }
 
+        /* 彈出視窗 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 15px; width: 300px; text-align: center; position: relative; }
         .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; color: #aaa; }
@@ -53,6 +61,18 @@
         <button class="reset-btn" onclick="resetPokedex()">重設</button>
     </div>
     
+    <div class="special-links-container">
+        <div class="special-link" onclick="loadSpecificTeam(3)" title="003 妙蛙花">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png" alt="妙蛙花">
+        </div>
+        <div class="special-link" onclick="loadSpecificTeam(6)" title="006 噴火龍">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png" alt="噴火龍">
+        </div>
+        <div class="special-link" onclick="loadSpecificTeam(9)" title="009 水箭龜">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png" alt="水箭龜">
+        </div>
+    </div>
+
     <div id="gen-selector" class="gen-selector"></div>
     
     <div id="loading-message">圖鑑準備中...</div>
@@ -60,7 +80,7 @@
 
     <div id="pokemon-modal" class="modal-overlay" onclick="closeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-btn" onclick="closeModal()">×</span>
+            <span class="close-btn" onclick="closeModal()">&times;</span>
             <img id="modal-img" src="" alt="Pokemon" style="width: 120px; height: 120px;">
             <h2 id="modal-name" style="margin-bottom: 5px;">中文名</h2>
             <p id="modal-en-name" style="margin-top: 0; color: #777; text-transform: capitalize;">English Name</p>
@@ -81,13 +101,13 @@
         const customWikiNames = {
             1: "妙蛙種子",
             2: "妙蛙草",
+            3: "妙蛙花",
+            6: "噴火龍",
+            9: "水箭龜",
             908: "魔幻假面喵",
             925: "一家鼠",
             1002: "古劍豹",
-            1020: "破空焰",
-	    1022: "铁磐岩",
-                        1023: "铁头壳",
-	    994: "铁毒蛾", 995: "铁荆棘" , 1001: "古简蜗",
+            1020: "破空焰"
         };
 
         const generations = [
@@ -101,6 +121,13 @@
             { gen: 8, start: 810, end: 905 },
             { gen: 9, start: 906, end: 1025 }
         ];
+
+        // 👇 新增：三大御三家專屬陣容設定 👇
+        const specialTeams = {
+            3: [3, 42, 76, 78, 80, 91, 94, 110, 115, 130, 137, 150, 169, 199, 205, 215, 217, 233, 241, 248, 257, 269, 310, 315, 321, 326, 350, 362, 373, 382, 389, 405, 407, 411, 454, 461, 464, 471, 474, 479, 484, 503, 560, 563, 584, 609, 625, 628, 643, 649, 658, 687, 693, 707, 717, 727, 738, 748, 765, 778, 792, 812, 826, 834, 858, 867, 881, 887, 889, 901, 914, 920, , 925, 936, 959, 968, 1000, 1005, 1007],
+            6: [6, 12, 18, 26, 55,], // 噴火龍目前的預設陣容（你之後可以像上面一樣替換成數字陣列）
+            9: [9]  // 水箭龜目前的預設陣容（你之後可以像上面一樣替換成數字陣列）
+        };
 
         let currentGen = 1;
         let currentLoadId = 0; 
@@ -144,6 +171,31 @@
                 await sleep(100); 
             }
             
+            if (myLoadId === currentLoadId) {
+                document.getElementById("loading-message").style.display = "none";
+            }
+        }
+
+        // 👇 修改：讀取專屬陣容陣列，並像世代一樣依序印出 👇
+        async function loadSpecificTeam(teamId) {
+            currentLoadId++; 
+            document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active')); 
+
+            document.getElementById("pokedex").innerHTML = "";
+            document.getElementById("loading-message").style.display = "block"; 
+            
+            // 讀取該 ID 的陣容，如果沒有特別設定就只載入自己
+            const team = specialTeams[teamId] || [teamId];
+            document.getElementById("loading-message").textContent = `正在召喚專屬隊伍的 ${team.length} 隻寶可夢，請稍候...`;
+            
+            const myLoadId = currentLoadId; 
+
+            for (let i = 0; i < team.length; i++) {
+                if (myLoadId !== currentLoadId) return; 
+                await getPokemon(team[i]);
+                await sleep(100); 
+            }
+
             if (myLoadId === currentLoadId) {
                 document.getElementById("loading-message").style.display = "none";
             }
