@@ -7,17 +7,43 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin: 20px; }
         
-        .search-container { margin-bottom: 20px; }
-        #search-input { padding: 10px; font-size: 16px; width: 250px; border: 1px solid #ccc; border-radius: 5px; }
-        .search-btn, .reset-btn { padding: 10px 15px; font-size: 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 5px; }
+        /* 專為手機優化的彈性搜尋列 */
+        .search-container { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 5px; 
+            max-width: 100%; 
+            margin: 0 auto 20px auto; 
+            padding: 0 5px;
+            box-sizing: border-box;
+        }
+        #search-input { 
+            flex: 1; 
+            min-width: 0; 
+            max-width: 400px; 
+            padding: 10px; 
+            font-size: 16px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+        }
+        .search-btn, .reset-btn { 
+            padding: 10px 15px; 
+            font-size: 16px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            white-space: nowrap; 
+        }
         .search-btn { background-color: #ffcb05; color: #333; }
         .reset-btn { background-color: #ccc; color: #333; }
 
-        /* 三大專屬寵物按鈕 (無框架、無文字，純圖形輪廓特效) */
+        /* 三大專屬寵物按鈕 - 圖片尺寸加大回 96px */
         .special-links-container { display: flex; justify-content: center; gap: 40px; margin-bottom: 25px; flex-wrap: wrap; }
         .special-link { cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
         .special-link:hover { transform: translateY(-8px) scale(1.25); filter: drop-shadow(0 10px 12px rgba(0,0,0,0.3)); }
-        .special-link img { width: 90px; height: 90px; display: block; }
+        .special-link img { width: 96px; height: 96px; display: block; }
         
         /* 世代選擇器 (9顆精靈球) 的樣式 */
         .gen-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
@@ -27,7 +53,14 @@
         .gen-btn img { width: 45px; height: 45px; }
         .gen-btn span { font-weight: bold; font-size: 14px; margin-top: 5px; color: #555; }
         
-        .pokedex-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1400px; margin: 0 auto; }
+        /* 👇 修改：還原為一排 10 隻卡片的完美比例 👇 */
+        .pokedex-container { 
+            display: grid; 
+            grid-template-columns: repeat(10, 1fr); 
+            gap: 10px; 
+            max-width: 1400px; 
+            margin: 0 auto; 
+        }
         .card { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; cursor: pointer; }
         .card:hover { transform: scale(1.05); }
         .card a { text-decoration: none; } 
@@ -46,6 +79,7 @@
         .close-btn:hover { color: red; }
         .stats-text { text-align: left; margin-top: 15px; padding: 0 20px;}
 
+        /* RWD 手機版：螢幕縮小時自動減少每排數量 */
         @media (max-width: 1200px) { .pokedex-container { grid-template-columns: repeat(6, 1fr); } }
         @media (max-width: 800px) { .pokedex-container { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 500px) { .pokedex-container { grid-template-columns: repeat(2, 1fr); } }
@@ -122,11 +156,10 @@
             { gen: 9, start: 906, end: 1025 }
         ];
 
-        // 👇 新增：三大御三家專屬陣容設定 👇
-                const specialTeams = {
-            3: [3, 42, 76, 78, 80, 91, 94, 110, 115, 130, 137, 150, 169, 199, 205, 215, 217, 233, 241, 248, 257, 269, 310, 315, 321, 326, 350, 362, 373, 382, 389, 405, 407, 411, 454, 461, 464, 471, 474, 479, 484, 503, 560, 563, 584, 609, 625, 628, 643, 649, 658, 687, 693, 707, 717, 727, 738, 748, 765, 778, 792, 812, 826, 834, 858, 867, 881, 887, 889, 901, 914, 920, , 925, 936, 959, 968, 1000, 1005, 1007],
-            6: [6, 12, 18, 26, 55, 65, 68, 71, 73, 89, 97, 134, 135, 142, 160, 164, 176, 178, 184, 185, 190, 193, 195, 200, 211, 222, 232, 235, 243, 244, 245, 254, 262, 267, 279, 289, 299, 301, 306, 311, 312, 314, 319, 323, 327, 334, 342, 344, 352, 365, 383, 395, 409, 417, 421, 424, 426, 429, 441, 448, 460, 467, 468, 469, 470, 476, 478, 483, 488, 492, 500, 508, 528, 530, 571, 576, 587, 591, 594, 596, 618, 621, 630, 632, 637, 644, 647, 652, 666, 668, 675, 691, 695, 709, 715, 716, 718, 720, 724, 733, 740, 745, 758, 764, 766, 768, 770, 771, 775, 784, 788, 791, 796, 799, 804, 807, 809, 815, 830, 845, 849, 853, 855, 861, 864, 865, 871, 875, 888, 892, 893, 897, 898, 900, 902, 908, 923, 937, 949, 956, 964, 970, 975, 980, 984, 987, 989, 994, 1002, 1008, 1014, 1018, 1020 ], // 噴火龍目前的預設陣容（你之後可以像上面一樣替換成數字陣列）
-            9: [9, 20, 22, 28, 34, 38, 51, 53, 57, 62, 85, 87, 95, 101, 105, 107, 108, 117, 121, 122, 124, 128, 131, 132, 151, 171, 181, 186, 202, 207, 208, 212, 213, 237, 260, 282, 284, 292, 295, 297, 303, 308, 332, 336, 340, 348, 354, 360 369, 376, 384, 392, 416, 430, 432, 435, 439, 442, 445, 452, 455, 463, 472, 475, 483, 485, 490, 497, 505, 523, 526, 531, 534, 537, 545, 549, 553, 556, 561, 567, 581, 593, 598, 604, 620, 626, 631, 635, 639, 644, 648, 655, 683, 689, 697, 699, 700, 701, 703, 706, 711, 716, 719, 730, 750, 752, 754, 763, 776, 780, 781, 786, 791, 801, 802, 818, 823, 839, 844, 866, 870, 873, 874, 876, 888, 892, 904, 911, 979, 983]  // 水箭龜目前的預設陣容（你之後可以像上面一樣替換成數字陣列）
+        const specialTeams = {
+            3: [3, 42, 76, 78, 80, 91, 94, 110, 115, 130, 137, 150, 169, 199, 205, 215, 217, 233, 241, 248, 257, 269, 310, 315, 321, 326, 350, 362, 373, 382, 389, 405, 407, 411, 454, 461, 464, 471, 474, 479, 484, 503, 560, 563, 584, 609, 625, 628, 643, 649, 658, 687, 693, 707, 717, 727, 738, 748, 765, 778, 792, 812, 826, 834, 858, 867, 881, 887, 889, 901, 914, 920, 925, 936, 959, 968, 1000, 1005, 1007],
+            6: [6, 12, 18, 26, 55, 65, 68, 71, 73, 89, 97, 134, 135, 142, 160, 164, 176, 178, 184, 185, 190, 193, 195, 200, 211, 222, 232, 235, 243, 244, 245, 254, 262, 267, 279, 289, 299, 301, 306, 311, 312, 314, 319, 323, 327, 334, 342, 344, 352, 365, 383, 395, 409, 417, 421, 424, 426, 429, 441, 448, 460, 467, 468, 469, 470, 476, 478, 483, 488, 492, 500, 508, 528, 530, 571, 576, 587, 591, 594, 596, 618, 621, 630, 632, 637, 644, 647, 652, 666, 668, 675, 691, 695, 709, 715, 716, 718, 720, 724, 733, 740, 745, 758, 764, 766, 768, 770, 771, 775, 784, 788, 791, 796, 799, 804, 807, 809, 815, 830, 845, 849, 853, 855, 861, 864, 865, 871, 875, 888, 892, 893, 897, 898, 900, 902, 908, 923, 937, 949, 956, 964, 970, 975, 980, 984, 987, 989, 994, 1002, 1008, 1014, 1018, 1020],
+            9: [9, 20, 22, 28, 34, 38, 51, 53, 57, 62, 85, 87, 95, 101, 105, 107, 108, 117, 121, 122, 124, 128, 131, 132, 151, 171, 181, 186, 202, 207, 208, 212, 213, 237, 260, 282, 284, 292, 295, 297, 303, 308, 332, 336, 340, 348, 354, 360, 369, 376, 384, 392, 416, 430, 432, 435, 439, 442, 445, 452, 455, 463, 472, 475, 483, 485, 490, 497, 505, 523, 526, 531, 534, 537, 545, 549, 553, 556, 561, 567, 581, 593, 598, 604, 620, 626, 631, 635, 639, 644, 648, 655, 683, 689, 697, 699, 700, 701, 703, 706, 711, 716, 719, 730, 750, 752, 754, 763, 776, 780, 781, 786, 791, 801, 802, 818, 823, 839, 844, 866, 870, 873, 874, 876, 888, 892, 904, 911, 979, 983]  
         };
 
         let currentGen = 1;
@@ -155,11 +188,11 @@
             currentLoadId++; 
             const myLoadId = currentLoadId; 
 
-            const genData = generations.find(g => g.gen === genNumber);
-            const total = genData.end - genData.start + 1;
-
             document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`gen-${genNumber}`).classList.add('active');
+
+            const genData = generations.find(g => g.gen === genNumber);
+            const total = genData.end - genData.start + 1;
 
             document.getElementById("loading-message").style.display = "block";
             document.getElementById("loading-message").textContent = `正在召喚第 ${genNumber} 世代的 ${total} 隻寶可夢，請稍候...`;
@@ -176,7 +209,6 @@
             }
         }
 
-        // 👇 修改：讀取專屬陣容陣列，並像世代一樣依序印出 👇
         async function loadSpecificTeam(teamId) {
             currentLoadId++; 
             document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active')); 
@@ -184,7 +216,6 @@
             document.getElementById("pokedex").innerHTML = "";
             document.getElementById("loading-message").style.display = "block"; 
             
-            // 讀取該 ID 的陣容，如果沒有特別設定就只載入自己
             const team = specialTeams[teamId] || [teamId];
             document.getElementById("loading-message").textContent = `正在召喚專屬隊伍的 ${team.length} 隻寶可夢，請稍候...`;
             
