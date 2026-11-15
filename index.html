@@ -7,7 +7,6 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin: 20px; }
         
-        /* 專為手機優化的彈性搜尋列 */
         .search-container { 
             display: flex; 
             justify-content: center; 
@@ -39,13 +38,11 @@
         .search-btn { background-color: #ffcb05; color: #333; }
         .reset-btn { background-color: #ccc; color: #333; }
 
-        /* 三大專屬寵物按鈕 - 圖片尺寸加大回 96px */
         .special-links-container { display: flex; justify-content: center; gap: 40px; margin-bottom: 25px; flex-wrap: wrap; }
         .special-link { cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
         .special-link:hover { transform: translateY(-8px) scale(1.25); filter: drop-shadow(0 10px 12px rgba(0,0,0,0.3)); }
         .special-link img { width: 96px; height: 96px; display: block; }
         
-        /* 世代選擇器 (9顆精靈球) 的樣式 */
         .gen-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         .gen-btn { display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.4; transition: all 0.2s; }
         .gen-btn:hover { opacity: 0.8; transform: scale(1.1); }
@@ -53,7 +50,7 @@
         .gen-btn img { width: 45px; height: 45px; }
         .gen-btn span { font-weight: bold; font-size: 14px; margin-top: 5px; color: #555; }
         
-        /* 👇 修改：還原為一排 10 隻卡片的完美比例 👇 */
+        /* 一排 10 隻的經典網格 */
         .pokedex-container { 
             display: grid; 
             grid-template-columns: repeat(10, 1fr); 
@@ -61,7 +58,7 @@
             max-width: 1400px; 
             margin: 0 auto; 
         }
-        .card { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; cursor: pointer; }
+        .card { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; cursor: pointer; min-height: 150px; justify-content: center; }
         .card:hover { transform: scale(1.05); }
         .card a { text-decoration: none; } 
         .card img { width: 80px; height: 80px; transition: transform 0.2s; }
@@ -70,16 +67,18 @@
         .card p.en-name { font-size: 12px; color: #777; margin: 0; text-transform: capitalize; }
         .type-badge { font-size: 12px; background-color: #eee; color: #333; padding: 3px 8px; border-radius: 10px; margin-top: 5px; font-weight: bold; display: inline-block; }
         
-        #loading-message { font-size: 18px; color: #555; margin: 20px 0; font-weight: bold; }
+        /* 👇 新增：載入中旋轉精靈球特效 👇 */
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .loading-spin { animation: spin 1.5s linear infinite; width: 40px !important; height: 40px !important; margin-bottom: 10px; opacity: 0.3; }
+        
+        #loading-message { font-size: 18px; color: #555; margin: 20px 0; font-weight: bold; display: none; }
 
-        /* 彈出視窗 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 15px; width: 300px; text-align: center; position: relative; }
         .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; color: #aaa; }
         .close-btn:hover { color: red; }
         .stats-text { text-align: left; margin-top: 15px; padding: 0 20px;}
 
-        /* RWD 手機版：螢幕縮小時自動減少每排數量 */
         @media (max-width: 1200px) { .pokedex-container { grid-template-columns: repeat(6, 1fr); } }
         @media (max-width: 800px) { .pokedex-container { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 500px) { .pokedex-container { grid-template-columns: repeat(2, 1fr); } }
@@ -109,12 +108,12 @@
 
     <div id="gen-selector" class="gen-selector"></div>
     
-    <div id="loading-message">圖鑑準備中...</div>
+    <div id="loading-message">搜尋中...</div>
     <div id="pokedex" class="pokedex-container"></div>
 
     <div id="pokemon-modal" class="modal-overlay" onclick="closeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <span class="close-btn" onclick="closeModal()">×</span>
             <img id="modal-img" src="" alt="Pokemon" style="width: 120px; height: 120px;">
             <h2 id="modal-name" style="margin-bottom: 5px;">中文名</h2>
             <p id="modal-en-name" style="margin-top: 0; color: #777; text-transform: capitalize;">English Name</p>
@@ -133,15 +132,8 @@
 
     <script>
         const customWikiNames = {
-            1: "妙蛙種子",
-            2: "妙蛙草",
-            3: "妙蛙花",
-            6: "噴火龍",
-            9: "水箭龜",
-            908: "魔幻假面喵",
-            925: "一家鼠",
-            1002: "古劍豹",
-            1020: "破空焰"
+            1: "妙蛙種子", 2: "妙蛙草", 3: "妙蛙花", 6: "噴火龍", 9: "水箭龜",
+            908: "魔幻假面喵", 925: "一家鼠", 1002: "古劍豹", 1020: "破空焰"
         };
 
         const generations = [
@@ -173,66 +165,75 @@
                 const btn = document.createElement("div");
                 btn.className = `gen-btn`;
                 btn.id = `gen-${g.gen}`;
-                btn.onclick = () => loadGeneration(g.gen);
-                
-                btn.innerHTML = `
-                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="第 ${g.gen} 世代">
-                    <span>${g.gen}</span>
-                `;
+                btn.onclick = () => {
+                    document.querySelectorAll('.gen-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentGen = g.gen;
+                    
+                    const team = [];
+                    for(let i = g.start; i <= g.end; i++) team.push(i);
+                    executeLoad(team);
+                };
+                btn.innerHTML = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"><span>${g.gen}</span>`;
                 container.appendChild(btn);
             });
         }
 
-        async function loadGeneration(genNumber) {
-            currentGen = genNumber;
-            currentLoadId++; 
-            const myLoadId = currentLoadId; 
-
-            document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`gen-${genNumber}`).classList.add('active');
-
-            const genData = generations.find(g => g.gen === genNumber);
-            const total = genData.end - genData.start + 1;
-
-            document.getElementById("loading-message").style.display = "block";
-            document.getElementById("loading-message").textContent = `正在召喚第 ${genNumber} 世代的 ${total} 隻寶可夢，請稍候...`;
-            document.getElementById("pokedex").innerHTML = "";
-
-            for (let i = genData.start; i <= genData.end; i++) {
-                if (myLoadId !== currentLoadId) return; 
-                await getPokemon(i);
-                await sleep(100); 
-            }
-            
-            if (myLoadId === currentLoadId) {
-                document.getElementById("loading-message").style.display = "none";
-            }
+        function loadSpecificTeam(teamId) {
+            document.querySelectorAll('.gen-btn').forEach(b => b.classList.remove('active'));
+            executeLoad(specialTeams[teamId] || [teamId]);
         }
 
-        async function loadSpecificTeam(teamId) {
-            currentLoadId++; 
-            document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active')); 
+        function resetPokedex() {
+            document.getElementById("search-input").value = ""; 
+            const genBtn = document.getElementById(`gen-${currentGen}`);
+            if(genBtn) genBtn.click();
+        }
 
-            document.getElementById("pokedex").innerHTML = "";
-            document.getElementById("loading-message").style.display = "block"; 
-            
-            const team = specialTeams[teamId] || [teamId];
-            document.getElementById("loading-message").textContent = `正在召喚專屬隊伍的 ${team.length} 隻寶可夢，請稍候...`;
-            
-            const myLoadId = currentLoadId; 
+        // 👇 核心加速引擎：骨架屏 + 並行下載 + 瀏覽器快取 👇
+        async function executeLoad(teamIdsArray) {
+            currentLoadId++;
+            const myLoadId = currentLoadId;
+            const container = document.getElementById("pokedex");
+            container.innerHTML = "";
+            document.getElementById("loading-message").style.display = "none";
 
-            for (let i = 0; i < team.length; i++) {
-                if (myLoadId !== currentLoadId) return; 
-                await getPokemon(team[i]);
-                await sleep(100); 
-            }
+            // 1. 瞬間印出所有卡片的「骨架 (旋轉精靈球)」，讓畫面一秒排好不空虛
+            const cardElements = {};
+            teamIdsArray.forEach(id => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.innerHTML = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" class="loading-spin"><h3 style="color:#aaa">#${id} 讀取中...</h3>`;
+                container.appendChild(card);
+                cardElements[id] = card;
+            });
 
-            if (myLoadId === currentLoadId) {
-                document.getElementById("loading-message").style.display = "none";
+            // 2. 將幾百隻寶可夢分成 15 隻一組，並行加速抓取 (像爆米花一樣同時彈出)
+            const chunkSize = 15; 
+            for (let i = 0; i < teamIdsArray.length; i += chunkSize) {
+                if (myLoadId !== currentLoadId) return;
+
+                const chunk = teamIdsArray.slice(i, i + chunkSize);
+                
+                await Promise.all(chunk.map(async (id) => {
+                    try {
+                        const data = await fetchPokemonData(id);
+                        if (myLoadId === currentLoadId) updatePokemonCard(cardElements[id], data);
+                    } catch(e) {
+                        if (myLoadId === currentLoadId) cardElements[id].innerHTML = `<h3 style="color:red">#${id} 失敗</h3>`;
+                    }
+                }));
+
+                await sleep(50); // 給伺服器一點喘息時間，避免被阻擋
             }
         }
 
         async function fetchPokemonData(identifier) {
+            // 💡 超級快取技術：檢查瀏覽器是否已經抓過這隻？如果有，0秒瞬間回傳！
+            const cacheKey = `pokeCache_${identifier}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) return JSON.parse(cached);
+
             const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${identifier}`);
             if (!res.ok) throw new Error("找不到寶可夢");
             const data = await res.json();
@@ -240,39 +241,28 @@
             if (customWikiNames[data.id]) {
                 data.chineseName = customWikiNames[data.id];
             } else {
-                let success = false;
-                let attempts = 3; 
-                
-                while (attempts > 0 && !success) {
-                    try {
-                        const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.id}`);
-                        if (!speciesRes.ok) throw new Error("Rate limited");
-                        
-                        const speciesData = await speciesRes.json();
-                        const zhNameObj = speciesData.names.find(n => n.language.name === 'zh-Hant') || speciesData.names.find(n => n.language.name === 'zh-Hans');
-                        
-                        data.chineseName = zhNameObj ? zhNameObj.name : data.name;
-                        success = true; 
-                    } catch (e) {
-                        attempts--;
-                        if (attempts > 0) {
-                            await sleep(300); 
-                        } else {
-                            data.chineseName = data.name; 
-                        }
-                    }
+                try {
+                    const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.id}`);
+                    const speciesData = await speciesRes.json();
+                    const zhNameObj = speciesData.names.find(n => n.language.name === 'zh-Hant') || speciesData.names.find(n => n.language.name === 'zh-Hans');
+                    data.chineseName = zhNameObj ? zhNameObj.name : data.name;
+                } catch (e) {
+                    data.chineseName = data.name; 
                 }
             }
-            return data;
-        }
 
-        async function getPokemon(id) {
-            try {
-                const data = await fetchPokemonData(id);
-                createPokemonCard(data);
-            } catch (error) {
-                console.error(`第 ${id} 隻抓取失敗`);
-            }
+            // 萃取需要的精華資料存進記憶體，下次點擊永遠 0 秒載入！
+            const optimizedData = {
+                id: data.id, name: data.name, chineseName: data.chineseName,
+                sprites: { front_default: data.sprites.front_default },
+                types: data.types.map(t => ({ type: { name: t.type.name } })),
+                height: data.height, weight: data.weight,
+                stats: data.stats.map(s => ({ base_stat: s.base_stat, stat: { name: s.stat.name } })),
+                cries: data.cries ? { latest: data.cries.latest } : null
+            };
+
+            try { localStorage.setItem(cacheKey, JSON.stringify(optimizedData)); } catch(e) {}
+            return optimizedData;
         }
 
         async function searchPokemon() {
@@ -282,31 +272,26 @@
             currentLoadId++; 
             document.querySelectorAll('.gen-btn').forEach(btn => btn.classList.remove('active')); 
 
-            document.getElementById("pokedex").innerHTML = "";
+            const container = document.getElementById("pokedex");
+            container.innerHTML = "";
             document.getElementById("loading-message").style.display = "block"; 
-            document.getElementById("loading-message").textContent = "搜尋中...";
             try {
                 const data = await fetchPokemonData(inputValue);
                 document.getElementById("loading-message").style.display = "none";
-                createPokemonCard(data);
+                const card = document.createElement('div');
+                card.classList.add('card');
+                container.appendChild(card);
+                updatePokemonCard(card, data);
             } catch (error) {
                 document.getElementById("loading-message").style.display = "none";
-                document.getElementById("pokedex").innerHTML = `<h3 style="grid-column: 1 / -1; color: red;">找不到這隻寶可夢！(搜尋請用英文或編號)</h3>`;
+                container.innerHTML = `<h3 style="grid-column: 1 / -1; color: red;">找不到這隻寶可夢！(搜尋請用英文或編號)</h3>`;
             }
         }
 
-        function resetPokedex() {
-            document.getElementById("search-input").value = ""; 
-            loadGeneration(currentGen); 
-        }
-
-        function createPokemonCard(data) {
+        // 把空殼卡片填入真實資料的函數
+        function updatePokemonCard(card, data) {
             const types = data.types.map(item => `<span class="type-badge">${item.type.name.toUpperCase()}</span>`).join(' ');
-            const card = document.createElement('div');
-            card.classList.add('card'); 
-            
             card.onclick = () => openModal(data);
-
             const imgSrc = data.sprites.front_default ? data.sprites.front_default : "https://via.placeholder.com/80?text=No+Image";
             
             card.innerHTML = `
@@ -317,53 +302,36 @@
                 <p class="en-name">${data.name}</p>
                 <div>${types}</div>
             `;
-            document.getElementById("pokedex").appendChild(card);
         }
 
         function openModal(data) {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-            }
-            
+            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
             if (data.cries && data.cries.latest) {
                 currentAudio = new Audio(data.cries.latest);
                 currentAudio.volume = 0.3; 
-                currentAudio.play().catch(err => console.log("音效無法播放:", err));
+                currentAudio.play().catch(e => console.log("音效無法播放:", e));
             }
-
             document.getElementById("modal-img").src = data.sprites.front_default;
             document.getElementById("modal-name").textContent = `#${data.id} ${data.chineseName}`;
             document.getElementById("modal-en-name").textContent = data.name;
-            
-            document.getElementById("modal-types").innerHTML = data.types.map(item => 
-                `<span class="type-badge">${item.type.name.toUpperCase()}</span>`
-            ).join(' ');
-
+            document.getElementById("modal-types").innerHTML = data.types.map(item => `<span class="type-badge">${item.type.name.toUpperCase()}</span>`).join(' ');
             document.getElementById("modal-height").textContent = (data.height / 10).toFixed(1);
             document.getElementById("modal-weight").textContent = (data.weight / 10).toFixed(1);
 
-            const hp = data.stats.find(s => s.stat.name === 'hp').base_stat;
-            const attack = data.stats.find(s => s.stat.name === 'attack').base_stat;
-            const defense = data.stats.find(s => s.stat.name === 'defense').base_stat;
-
-            document.getElementById("modal-hp").textContent = hp;
-            document.getElementById("modal-attack").textContent = attack;
-            document.getElementById("modal-defense").textContent = defense;
-
+            document.getElementById("modal-hp").textContent = data.stats.find(s => s.stat.name === 'hp').base_stat;
+            document.getElementById("modal-attack").textContent = data.stats.find(s => s.stat.name === 'attack').base_stat;
+            document.getElementById("modal-defense").textContent = data.stats.find(s => s.stat.name === 'defense').base_stat;
             document.getElementById("pokemon-modal").style.display = "flex";
         }
 
         function closeModal() {
             document.getElementById("pokemon-modal").style.display = "none";
-            if (currentAudio) {
-                currentAudio.pause();
-            }
+            if (currentAudio) currentAudio.pause();
         }
 
+        // 初始化
         renderGenButtons();
-        loadGeneration(1);
+        document.getElementById('gen-1').click(); 
     </script>
-
 </body>
 </html>
